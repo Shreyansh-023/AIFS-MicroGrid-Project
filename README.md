@@ -91,3 +91,5 @@ Training is bound by kernel-launch latency, not GPU compute: SAC fires many smal
 sequential operations that cannot saturate a laptop GPU. Measured on an RTX 3050,
 CUDA gives roughly 2.25× over CPU (~2 h vs ~4.5 h for all three agents). Larger
 batches do not help — a batch of 1024 costs the same as 256.
+
+<img width="1109" height="480" alt="image" src="https://github.com/user-attachments/assets/1214c9e3-fb95-4f5d-836d-7ef23b24c40c" />
