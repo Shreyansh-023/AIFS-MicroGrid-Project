@@ -1,0 +1,94 @@
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  border-bottom: 1px solid transparent;
+  transition: background 0.22s var(--ease), border-color 0.22s var(--ease),
+    backdrop-filter 0.22s var(--ease);
+}
+
+.nav.is-solid {
+  background: rgba(11, 15, 20, 0.82);
+  backdrop-filter: blur(14px) saturate(140%);
+  border-bottom-color: var(--hairline);
+}
+
+.nav-inner {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  height: 56px;
+}
+
+/* ---------- brand ---------- */
+
+.nav-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.nav-brand-mark {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  background: var(--rsac);
+  box-shadow: 0 0 0 3px rgba(53, 214, 164, 0.15);
+}
+
+.nav-brand-text {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.nav-brand-dim {
+  color: var(--text-3);
+  font-weight: 500;
+}
+
+/* ---------- links ---------- */
+
+.nav-links {
+  display: flex;
+  gap: 2px;
+}
+
+@media (max-width: 620px) {
+  .nav-links {
+    display: none;
+  }
+}
+
+.nav-link {
+  position: relative;
+  padding: 7px 12px;
+  font-size: 13px;
+  color: var(--text-3);
+  text-decoration: none;
+  border-radius: var(--r-sm);
+  transition: color 0.16s var(--ease), background 0.16s var(--ease);
+}
+
+.nav-link:hover {
+  color: var(--text-2);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.nav-link.is-on {
+  color: var(--text);
+}
+
+.nav-link.is-on::after {
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 1px;
+  height: 1.5px;
+  border-radius: 999px;
+  background: var(--rsac);
+}
+

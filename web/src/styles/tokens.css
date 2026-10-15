@@ -1,0 +1,45 @@
+:root {
+  /* Surfaces — cool slate, not pure black */
+  --bg: #0b0f14;
+  --surface: #111822;
+  --surface-2: #161f2b;
+  --surface-3: #1d2836;
+  --hairline: #22303f;
+  --hairline-strong: #2f4055;
+
+  /* Text */
+  --text: #e4ebf2;
+  --text-2: #9eb0c2;
+  --text-3: #6b7f93;
+
+  /* Agent identity — distinguishable in both hue and lightness */
+  --lp: #d8dee6;
+  --sac: #4da3ff;
+  --rsac: #35d6a4;
+  --ppo: #c48bff;
+  --rule: #f0a23c;
+  --noop: #5d7490;
+
+  /* Domain semantics */
+  --solar: #f5c242;
+  --load: #ff7a66;
+  --price-peak: #e8576b;
+  --price-mid: #e8a33c;
+  --price-off: #3fbf87;
+  --charge: #4da3ff;
+  --discharge: #f0a23c;
+
+  --grid-import: #ff7a66;
+  --grid-export: #35d6a4;
+
+  /* Type */
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", "Cascadia Code", ui-monospace, monospace;
+
+  /* Rhythm */
+  --r-sm: 4px;
+  --r-md: 7px;
+  --r-lg: 11px;
+
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+}

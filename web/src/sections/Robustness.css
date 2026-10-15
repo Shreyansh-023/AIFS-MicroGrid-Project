@@ -1,0 +1,305 @@
+/* ---------- noise dial ---------- */
+
+.rb-dial-bar {
+  display: grid;
+  grid-template-columns: 136px 1fr;
+  gap: 26px;
+  align-items: center;
+  padding: 20px 22px 26px;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+  margin-bottom: 14px;
+}
+
+@media (max-width: 680px) {
+  .rb-dial-bar {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+.rb-dial-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rb-dial-caption {
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.rb-dial-read {
+  font-size: 40px;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.rb-dial-read small {
+  font-size: 19px;
+  color: var(--text-3);
+  margin-left: 1px;
+}
+
+.rb-dial-track {
+  position: relative;
+}
+
+.rb-dial-track input[type="range"] {
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--price-off) 0%,
+    var(--price-mid) var(--fill),
+    var(--surface-3) var(--fill),
+    var(--surface-3) 100%
+  );
+  cursor: pointer;
+  display: block;
+}
+
+.rb-dial-track input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: var(--text);
+  border: 3px solid var(--bg);
+  box-shadow: 0 0 0 1px var(--hairline-strong);
+  cursor: grab;
+  transition: transform 0.14s var(--ease);
+}
+
+.rb-dial-track input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.16);
+}
+
+.rb-dial-track input[type="range"]::-moz-range-thumb {
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: var(--text);
+  border: 3px solid var(--bg);
+  cursor: grab;
+}
+
+.rb-dial-stops {
+  position: relative;
+  height: 24px;
+  margin-top: 9px;
+}
+
+.rb-stop {
+  position: absolute;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  color: var(--text-3);
+  transition: color 0.14s var(--ease);
+}
+
+.rb-stop i {
+  width: 1px;
+  height: 5px;
+  background: var(--hairline-strong);
+  transition: background 0.14s var(--ease);
+}
+
+.rb-stop:hover {
+  color: var(--text-2);
+}
+
+.rb-stop.is-on {
+  color: var(--text);
+}
+
+.rb-stop.is-on i {
+  background: var(--text);
+}
+
+/* ---------- verdict ---------- */
+
+.rb-verdict {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  padding: 15px 19px;
+  border: 1px solid var(--hairline);
+  border-left: 2px solid var(--text-3);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  margin-bottom: 22px;
+  transition: border-left-color 0.3s var(--ease), background 0.3s var(--ease);
+}
+
+.rb-verdict[data-flipped="true"] {
+  border-left-color: var(--rsac);
+  background: linear-gradient(
+    90deg,
+    rgba(53, 214, 164, 0.07),
+    var(--surface) 42%
+  );
+}
+
+.rb-verdict-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-3);
+  margin-top: 7px;
+  flex-shrink: 0;
+  transition: background 0.3s var(--ease), box-shadow 0.3s var(--ease);
+}
+
+.rb-verdict[data-flipped="true"] .rb-verdict-dot {
+  background: var(--rsac);
+  box-shadow: 0 0 0 4px rgba(53, 214, 164, 0.16);
+}
+
+.rb-verdict-text {
+  font-size: 14px;
+  line-height: 1.62;
+  color: var(--text-2);
+  max-width: 84ch;
+}
+
+.rb-verdict-text strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* ---------- grid ---------- */
+
+.rb-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.rb-wide {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 860px) {
+  .rb-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.rb-chart {
+  height: 266px;
+  margin-bottom: 14px;
+}
+
+.rb-chart--short {
+  height: 188px;
+}
+
+.rb-read {
+  margin-top: 13px;
+  padding-top: 12px;
+  border-top: 1px solid var(--hairline);
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-3);
+}
+
+/* ---------- ranking ---------- */
+
+.rb-rank {
+  padding: 8px 0;
+}
+
+.rb-rank-row {
+  display: grid;
+  grid-template-columns: 26px 104px 1fr 62px 46px;
+  gap: 11px;
+  align-items: center;
+  padding: 9px 18px;
+  font-size: 12.5px;
+}
+
+.rb-rank-row + .rb-rank-row {
+  border-top: 1px solid var(--hairline);
+}
+
+.rb-rank-pos {
+  font-size: 11px;
+  color: var(--text-3);
+}
+
+.rb-rank-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.rb-rank-name i {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.rb-rank-bar {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+
+.rb-rank-fill {
+  height: 100%;
+  border-radius: 999px;
+  opacity: 0.8;
+  transition: width 0.35s var(--ease);
+}
+
+.rb-rank-val {
+  text-align: right;
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+.rb-rank-delta {
+  text-align: right;
+  font-size: 10.5px;
+}
+
+.rb-rank-delta.dim {
+  color: var(--text-3);
+}
+
+@media (max-width: 520px) {
+  .rb-rank-row {
+    grid-template-columns: 24px 1fr 58px;
+    gap: 9px;
+  }
+  .rb-rank-bar,
+  .rb-rank-delta {
+    display: none;
+  }
+}
+
+/* ---------- summary ---------- */
+
+.rb-summary {
+  margin-top: 16px;
+  overflow: hidden;
+}
+
+.rb-summary-scroll {
+  overflow-x: auto;
+}
