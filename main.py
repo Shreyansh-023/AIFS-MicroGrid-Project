@@ -12,6 +12,11 @@ import time
 warnings.filterwarnings('ignore')
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
+# Use a non-interactive backend so headless/Windows environments without Tcl/Tk
+# can still generate the requested PDF plots.
+import matplotlib
+matplotlib.use('Agg')
+
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
 from data_loader import PecanStreetDataLoader, ElectricityDataLoader, get_tou_prices
@@ -73,10 +78,15 @@ def setup_environment(data_path, fallback_path):
                 best_idx = idx
         
         profile = daily_profiles[best_idx]
-        solar = profile['solar_kw'] * 5  # scale up for realistic residential system
+        solar = profile['solar_kw'].copy()
+        if isinstance(data_loader, ElectricityDataLoader):
+            solar = solar * 5  # legacy aggregate data is scaled to household microgrid size
         load = profile['load_kw']
         print("\nUsing profile from Date: %s (highest solar day)" % profile['date'])
-        print("Solar scaled 5x for realistic residential microgrid")
+        if isinstance(data_loader, PecanStreetDataLoader):
+            print("Using measured Pecan Street household solar and reconstructed gross load")
+        else:
+            print("Solar scaled 5x for realistic residential microgrid")
     else:
         print("\nUsing synthetic solar and load profiles")
         np.random.seed(42)

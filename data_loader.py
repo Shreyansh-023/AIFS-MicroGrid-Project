@@ -19,7 +19,11 @@ class PecanStreetDataLoader:
     def load_raw_data(self):
         print("Loading data from %s..." % self.csv_path)
         self.raw_data = pd.read_csv(self.csv_path)
-        self.raw_data['Datetime (UTC)'] = pd.to_datetime(self.raw_data['Datetime (UTC)'])
+        # Convert UTC source timestamps to Austin local time before grouping by day/hour.
+        self.raw_data['Datetime (UTC)'] = (
+            pd.to_datetime(self.raw_data['Datetime (UTC)'], utc=True)
+            .dt.tz_convert('America/Chicago')
+        )
         print("Loaded %d rows" % len(self.raw_data))
         print("Homes: %s" % str(self.raw_data['Home ID'].unique()))
         print("Circuits: %s" % str(self.raw_data['Circuit'].unique()))
@@ -33,6 +37,10 @@ class PecanStreetDataLoader:
             self.load_raw_data()
             
         circuit_data = self.raw_data[self.raw_data['Circuit'] == circuit_name].copy()
+        # Pecan Street stores several measures per circuit. Keep only real power;
+        # averaging current, phase angle, and harmonic distortion is invalid.
+        if 'Measure' in circuit_data.columns:
+            circuit_data = circuit_data[circuit_data['Measure'].str.casefold() == 'real power']
         circuit_data = circuit_data[['Datetime (UTC)', 'Home ID', 'Value']]
         circuit_data.columns = ['datetime', 'home_id', 'power_kw']
         return circuit_data
@@ -52,7 +60,8 @@ class PecanStreetDataLoader:
             
         print("\nProcessing solar generation data...")
         solar_raw = self.extract_circuit_data('Solar')
-        solar_raw['power_kw'] = solar_raw['power_kw'].abs()  # make positive
+        # Small negative solar readings are sensor noise; never turn them into generation.
+        solar_raw['power_kw'] = solar_raw['power_kw'].clip(lower=0)
         solar_hourly = self.aggregate_to_hourly(solar_raw)
         
         print("Processing main panel (load) data...")
@@ -94,16 +103,16 @@ class PecanStreetDataLoader:
                 
                 if len(day_solar) == 24 and len(day_load) == 24:
                     solar_vals = day_solar['power_kw'].values.astype(np.float32)
-                    # zero out nighttime solar
-                    for h in range(24):
-                        if h < 6 or h >= 20:
-                            solar_vals[h] = 0.0
+                    # Main Panel is signed net grid exchange. Add onsite PV back to
+                    # recover household consumption; the environment subtracts PV itself.
+                    load_vals = day_load['power_kw'].values.astype(np.float32) + solar_vals
+                    load_vals = np.maximum(load_vals, 0.0)
                     
                     daily_profiles.append({
                         'home_id': home_id,
                         'date': date,
                         'solar_kw': solar_vals,
-                        'load_kw': day_load['power_kw'].values.astype(np.float32)
+                        'load_kw': load_vals
                     })
         
         self.daily_profiles = daily_profiles
