@@ -93,3 +93,5 @@ CUDA gives roughly 2.25× over CPU (~2 h vs ~4.5 h for all three agents). Larger
 batches do not help — a batch of 1024 costs the same as 256.
 
 <img width="1109" height="480" alt="image" src="https://github.com/user-attachments/assets/1214c9e3-fb95-4f5d-836d-7ef23b24c40c" />
+<img width="1057" height="352" alt="image" src="https://github.com/user-attachments/assets/22673acd-1de8-4c04-9e03-31b4196c93a4" />
+
