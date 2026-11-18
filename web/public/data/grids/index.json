@@ -1,0 +1,239 @@
+{
+ "grids": [
+  {
+   "id": "G1",
+   "name": "Residential (hot)",
+   "description": "Single-family home in Austin TX, TOU tariff, 40% feed-in. Same battery/tariff as the original single-grid study.",
+   "batteryKwh": 13.5,
+   "batteryKw": 5.0,
+   "pvKwp": 6.0,
+   "tariff": "Residential TOU",
+   "loadLabel": "Household load",
+   "capture": {
+    "LP": 100.0,
+    "MPC": 100.0,
+    "SAC": 77.8,
+    "PPO": 34.7,
+    "Self-Cons.": 9.6,
+    "Rule-Based": -1849.6,
+    "NoOp": 0.0,
+    "Generalist SAC": 72.7,
+    "R-SAC": 74.5,
+    "Zero-shot SAC": -487.8
+   },
+   "capture30": {
+    "MPC": 61.6,
+    "LP": 61.3,
+    "R-SAC": 58.1,
+    "SAC": 55.7
+   }
+  },
+  {
+   "id": "G2",
+   "name": "Residential (cold)",
+   "description": "Single-family home in Minneapolis MN, flat tariff with a low export credit: value comes from PV self-consumption.",
+   "batteryKwh": 10.0,
+   "batteryKw": 5.0,
+   "pvKwp": 5.0,
+   "tariff": "Flat rate",
+   "loadLabel": "Household load",
+   "capture": {
+    "LP": 100.0,
+    "MPC": 100.0,
+    "SAC": 36.6,
+    "PPO": -104.0,
+    "Self-Cons.": 27.5,
+    "Rule-Based": -4558.9,
+    "NoOp": 0.0,
+    "Generalist SAC": 15.2,
+    "R-SAC": 33.5,
+    "Zero-shot SAC": -141.0
+   },
+   "capture30": {
+    "MPC": 27.9,
+    "LP": 26.0,
+    "R-SAC": -3.7,
+    "SAC": -26.2
+   }
+  },
+  {
+   "id": "G3",
+   "name": "Commercial office",
+   "description": "Medium office in Los Angeles CA, commercial TOU with a daily demand charge and weekday/weekend schedule.",
+   "batteryKwh": 200.0,
+   "batteryKw": 60.0,
+   "pvKwp": 120.0,
+   "tariff": "Commercial TOU + demand charge",
+   "loadLabel": "Office load",
+   "capture": {
+    "LP": 100.0,
+    "MPC": 100.0,
+    "SAC": 92.2,
+    "PPO": 57.0,
+    "Self-Cons.": -37.0,
+    "Rule-Based": -824.0,
+    "NoOp": 0.0,
+    "Generalist SAC": 88.6,
+    "R-SAC": 77.5,
+    "Zero-shot SAC": -17.2
+   },
+   "capture30": {
+    "LP": 58.6,
+    "R-SAC": 58.5,
+    "MPC": 55.8,
+    "SAC": 49.7
+   }
+  },
+  {
+   "id": "G4",
+   "name": "Rural weak grid",
+   "description": "20-home rural community in Apache County AZ on a weak feeder: import and export are capped; shed load is priced at VoLL.",
+   "batteryKwh": 200.0,
+   "batteryKw": 40.0,
+   "pvKwp": 80.0,
+   "tariff": "Flat rate",
+   "loadLabel": "Community load",
+   "capture": {
+    "LP": 100.0,
+    "MPC": 100.0,
+    "SAC": 97.3,
+    "PPO": 85.7,
+    "Self-Cons.": -82.8,
+    "Rule-Based": -967.5,
+    "NoOp": 0.0,
+    "Generalist SAC": 94.2,
+    "R-SAC": 91.3,
+    "Zero-shot SAC": -7.7
+   },
+   "capture30": {
+    "R-SAC": 60.3,
+    "SAC": 59.0,
+    "MPC": 39.6,
+    "LP": 16.0
+   }
+  },
+  {
+   "id": "G5",
+   "name": "EV community (RTP)",
+   "description": "10 homes with 8 uncontrolled EV chargers in Queens NY, real-time pricing on NYISO NYC day-ahead LBMP, no export.",
+   "batteryKwh": 60.0,
+   "batteryKw": 25.0,
+   "pvKwp": 40.0,
+   "tariff": "Real-time (NYISO day-ahead LBMP)",
+   "loadLabel": "Community + EV load",
+   "capture": {
+    "LP": 100.0,
+    "MPC": 100.0,
+    "SAC": 66.6,
+    "PPO": -82.9,
+    "Self-Cons.": 21.6,
+    "Rule-Based": -2568.5,
+    "NoOp": 0.0,
+    "Generalist SAC": 60.9,
+    "R-SAC": 58.8,
+    "Zero-shot SAC": -67.6
+   },
+   "capture30": {
+    "MPC": 71.1,
+    "R-SAC": 48.9,
+    "SAC": 34.6,
+    "LP": -190.8
+   }
+  },
+  {
+   "id": "G6",
+   "name": "Industrial warehouse",
+   "description": "Warehouse in Houston TX, industrial TOU with a high daily demand charge and a slow-ramping battery.",
+   "batteryKwh": 500.0,
+   "batteryKw": 125.0,
+   "pvKwp": 300.0,
+   "tariff": "Industrial TOU + demand charge",
+   "loadLabel": "Warehouse load",
+   "capture": {
+    "LP": 100.0,
+    "MPC": 100.0,
+    "SAC": 81.2,
+    "PPO": 58.0,
+    "Self-Cons.": -72.5,
+    "Rule-Based": -1328.2,
+    "NoOp": 0.0,
+    "Generalist SAC": 79.4,
+    "R-SAC": 69.0,
+    "Zero-shot SAC": -79.3
+   },
+   "capture30": {
+    "R-SAC": -5.8,
+    "LP": -11.4,
+    "MPC": -33.9,
+    "SAC": -163.4
+   }
+  }
+ ],
+ "methods": [
+  "SAC",
+  "Generalist SAC",
+  "R-SAC",
+  "PPO",
+  "MPC",
+  "Self-Cons.",
+  "Rule-Based",
+  "Zero-shot SAC"
+ ],
+ "robustMethods": [
+  "LP",
+  "MPC",
+  "SAC",
+  "R-SAC"
+ ],
+ "transfer": {
+  "G1": {
+   "G1": 77.0,
+   "G2": -759.4,
+   "G3": -118.8,
+   "G4": -111.0,
+   "G5": -264.3,
+   "G6": -248.5
+  },
+  "G2": {
+   "G1": -1142.4,
+   "G2": 41.5,
+   "G3": -794.1,
+   "G4": -324.5,
+   "G5": -243.5,
+   "G6": -1160.3
+  },
+  "G3": {
+   "G1": -1056.9,
+   "G2": -2812.0,
+   "G3": 92.5,
+   "G4": -269.6,
+   "G5": -1504.7,
+   "G6": -142.2
+  },
+  "G4": {
+   "G1": -520.3,
+   "G2": -336.4,
+   "G3": -797.9,
+   "G4": 97.2,
+   "G5": -172.7,
+   "G6": -747.4
+  },
+  "G5": {
+   "G1": -1198.5,
+   "G2": -336.4,
+   "G3": -384.1,
+   "G4": -300.6,
+   "G5": 69.7,
+   "G6": -792.8
+  },
+  "G6": {
+   "G1": -1025.9,
+   "G2": -1762.3,
+   "G3": -137.4,
+   "G4": -92.2,
+   "G5": -808.0,
+   "G6": 81.0
+  }
+ },
+ "note": "Share of the perfect-foresight LP's savings over an idle battery captured on held-out test days (100 = optimal, 0 = no better than idle). Mean of 2 training seeds."
+}

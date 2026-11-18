@@ -164,3 +164,22 @@
   color: var(--text-3);
 }
 
+
+/* ---------- grid switching ---------- */
+
+#top.is-switching main,
+#top.is-switching .hero {
+  opacity: 0.55;
+  transition: opacity 0.15s var(--ease);
+}
+
+.boot-back {
+  margin-top: 6px;
+  padding: 8px 14px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--text);
+  font: 500 13px var(--font-sans);
+  cursor: pointer;
+}

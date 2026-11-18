@@ -1,0 +1,15 @@
+\begin{table}[t]\centering\small
+\caption{Microgrid archetypes (all data: calendar year 2018).}\label{tab:grids}
+\begin{tabular}{llrrrll}
+\toprule
+ID & Archetype & Battery & PV & Mean load & Tariff & Limits \\
+\midrule
+G1 & Residential (hot) & 13.5 kWh / 5 kW & 6 kWp & 1.2 kW & tou-residential & -- \\
+G2 & Residential (cold) & 10 kWh / 5 kW & 5 kWp & 0.9 kW & flat & -- \\
+G3 & Commercial office & 200 kWh / 60 kW & 120 kWp & 100.1 kW & tou-commercial & DC \$0.60/kW-day \\
+G4 & Rural weak grid & 200 kWh / 40 kW & 80 kWp & 17.2 kW & flat & import $\le$ 30 kW, export $\le$ 30 kW \\
+G5 & EV community (RTP) & 60 kWh / 25 kW & 40 kWp & 10.6 kW & rtp-nyiso & export $\le$ 0 kW \\
+G6 & Industrial warehouse & 500 kWh / 125 kW & 300 kWp & 157.8 kW & tou-industrial & DC \$1.00/kW-day \\
+\bottomrule
+\end{tabular}
+\end{table}

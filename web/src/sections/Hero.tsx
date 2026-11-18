@@ -1,5 +1,6 @@
 import type { SimulationData } from "../data/types";
-import { touAt } from "../data/agents";
+import { touAt, useBands } from "../data/agents";
+import { moneyDp } from "../data/useSimulation";
 import "./Hero.css";
 
 interface Props {
@@ -21,6 +22,9 @@ export default function Hero({ data }: Props) {
     : null;
 
   const mostRobust = robustness?.summary?.[0];
+  const g = meta.grid;
+  const capOf = (r: Record<string, string | number> | null | undefined) =>
+    r && r["Capture (%)"] !== undefined ? Number(r["Capture (%)"]) : null;
 
   const peakPrice = Math.max(...data.profiles.price);
   const offPrice = Math.min(...data.profiles.price);
@@ -34,7 +38,9 @@ export default function Hero({ data }: Props) {
         <div className="hero-kicker">
           <span className="hero-kicker-dot" />
           <span className="mono">
-            Reinforcement learning · battery dispatch · thesis build
+            {g
+              ? `Multi-grid study · ${g.id} · ${g.name}`
+              : "Reinforcement learning · battery dispatch · thesis build"}
           </span>
         </div>
 
@@ -44,43 +50,66 @@ export default function Hero({ data }: Props) {
           what tomorrow costs.
         </h1>
 
-        <p className="hero-lede">
-          Linear programming solves the perfect day — if you already know the
-          day. This project asks what happens when you don't: three RL agents
-          dispatch a {meta.config.batteryCapacityKwh} kWh home battery against
-          an LP that was handed the answer key, then both get their forecasts
-          corrupted.
-        </p>
+        {g ? (
+          <p className="hero-lede">
+            {g.description} {g.strategy} RL agents dispatch its{" "}
+            {meta.config.batteryCapacityKwh} kWh / {meta.config.maxPowerKw} kW
+            battery against an LP that was handed the answer key and an MPC
+            that re-plans every hour.
+          </p>
+        ) : (
+          <p className="hero-lede">
+            Linear programming solves the perfect day — if you already know the
+            day. This project asks what happens when you don't: three RL agents
+            dispatch a {meta.config.batteryCapacityKwh} kWh home battery against
+            an LP that was handed the answer key, then both get their forecasts
+            corrupted.
+          </p>
+        )}
 
         <div className="hero-stats">
           <HeroStat
             label="LP benchmark"
             value={lp ? fmt(Number(lp["Mean Profit ($)"])) : "—"}
-            note="perfect foresight"
+            note={g ? "perfect foresight · per day" : "perfect foresight"}
           />
           <HeroStat
             label={bestLearned ? `Best learned · ${bestLearned.Agent}` : "Best learned"}
             value={bestLearned ? fmt(Number(bestLearned["Mean Profit ($)"])) : "—"}
             note={
               bestLearned
-                ? `${Number(bestLearned["Gap vs LP (%)"]).toFixed(1)}% gap`
+                ? capOf(bestLearned) !== null
+                  ? `${capOf(bestLearned)!.toFixed(0)}% of LP savings`
+                  : `${Number(bestLearned["Gap vs LP (%)"]).toFixed(1)}% gap`
                 : "not yet trained"
             }
             accent
           />
           <HeroStat
-            label="Most robust"
-            value={mostRobust ? String(mostRobust.Agent) : "—"}
+            label={g ? "Best at 30% error" : "Most robust"}
+            value={
+              mostRobust
+                ? g && mostRobust.Agent === "LP"
+                  ? "LP (open loop)"
+                  : String(mostRobust.Agent)
+                : "—"
+            }
             note={
               mostRobust
-                ? `${Math.abs(Number(mostRobust["Degradation (%)"])).toFixed(1)}% decay @30% noise`
+                ? mostRobust["Capture @ 30% (%)"] !== undefined
+                  ? `${Number(mostRobust["Capture @ 30% (%)"]).toFixed(0)}% of LP savings`
+                  : `${Math.abs(Number(mostRobust["Degradation (%)"])).toFixed(1)}% decay @30% noise`
                 : "sweep pending"
             }
           />
           <HeroStat
             label="Price spread"
             value={`${spread}×`}
-            note={`$${offPrice.toFixed(2)} → $${peakPrice.toFixed(2)}/kWh`}
+            note={
+              peakPrice - offPrice < 1e-6
+                ? `flat $${peakPrice.toFixed(2)}/kWh`
+                : `$${offPrice.toFixed(2)} → $${peakPrice.toFixed(2)}/kWh`
+            }
           />
         </div>
 
@@ -104,7 +133,7 @@ export default function Hero({ data }: Props) {
 }
 
 function fmt(v: number) {
-  return `${v < 0 ? "−" : ""}$${Math.abs(v).toFixed(2)}`;
+  return `${v < 0 ? "−" : ""}$${Math.abs(v).toFixed(moneyDp(v))}`;
 }
 
 function HeroStat({
@@ -148,7 +177,18 @@ function Schematic({ data }: { data: SimulationData }) {
   const s = solar[h];
   const l = load[h];
   const surplus = s - l;
-  const band = touAt(h);
+  const band = touAt(h, useBands());
+  const cfg = data.meta.config;
+  const g = data.meta.grid;
+  const flowMax = cfg.maxPowerKw * 1.2;
+  const gridCap =
+    cfg.peakThresholdKw !== null
+      ? `cap ${cfg.peakThresholdKw} kW`
+      : g?.importCapKw != null
+      ? `import ≤ ${g.importCapKw} kW`
+      : g?.demandChargePerKwDay
+      ? `$${g.demandChargePerKwDay.toFixed(2)}/kW-day`
+      : "no limit";
 
   return (
     <div className="schem">
@@ -158,7 +198,7 @@ function Schematic({ data }: { data: SimulationData }) {
         </span>
         <span className="schem-head-band" style={{ color: band.color }}>
           <i style={{ background: band.color }} />
-          {band.label} · ${band.price.toFixed(2)}/kWh
+          {band.label} · ${data.profiles.price[h].toFixed(2)}/kWh
         </span>
       </div>
 
@@ -171,7 +211,7 @@ function Schematic({ data }: { data: SimulationData }) {
         />
         <Flow
           magnitude={s}
-          max={6}
+          max={flowMax}
           color="var(--solar)"
           label="generation"
         />
@@ -183,7 +223,7 @@ function Schematic({ data }: { data: SimulationData }) {
         />
         <Flow
           magnitude={Math.abs(surplus)}
-          max={6}
+          max={flowMax}
           color={surplus > 0 ? "var(--charge)" : "var(--discharge)"}
           label={surplus > 0 ? "charge" : "discharge"}
           reverse={surplus < 0}
@@ -200,18 +240,18 @@ function Schematic({ data }: { data: SimulationData }) {
         <Node
           kind="grid"
           title="Utility grid"
-          value={`cap ${data.meta.config.peakThresholdKw} kW`}
+          value={gridCap}
           icon={<GridIcon />}
         />
         <Flow
           magnitude={Math.max(0, l - s)}
-          max={6}
+          max={flowMax}
           color="var(--grid-import)"
           label="import"
         />
         <Node
           kind="load"
-          title="Household load"
+          title={g?.loadLabel ?? "Household load"}
           value={`${l.toFixed(2)} kW`}
           icon={<HomeIcon />}
         />
@@ -219,7 +259,7 @@ function Schematic({ data }: { data: SimulationData }) {
 
       <div className="schem-foot">
         <span className="mono">
-          Agent observes 131 features · acts once per hour · ±
+          Agent observes {g?.obsDim ?? 131} features · acts once per hour · ±
           {data.meta.config.maxPowerKw} kW
         </span>
       </div>

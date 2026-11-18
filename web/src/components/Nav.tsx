@@ -1,16 +1,27 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { GridIndex, Source } from "../data/types";
 import "./Nav.css";
 
 const LINKS = [
+  { id: "grids", label: "Grids" },
   { id: "replay", label: "Replay" },
   { id: "compare", label: "Compare" },
   { id: "robustness", label: "Robustness" },
   { id: "system", label: "System" },
 ];
 
-export default function Nav() {
+interface Props {
+  source: Source;
+  onSource: (s: Source) => void;
+  index: GridIndex | null;
+  switching: boolean;
+}
+
+export default function Nav({ source, onSource, index, switching }: Props) {
   const [active, setActive] = useState("replay");
   const [solid, setSolid] = useState(false);
+  const hasGrids = index !== null;
+  const links = useMemo(() => LINKS.filter((l) => l.id !== "grids" || hasGrids), [hasGrids]);
 
   useEffect(() => {
     const onScroll = () => setSolid(window.scrollY > 40);
@@ -30,13 +41,13 @@ export default function Nav() {
       { rootMargin: "-20% 0px -70% 0px", threshold: [0.05, 0.25, 0.5] }
     );
 
-    LINKS.forEach((l) => {
+    links.forEach((l) => {
       const el = document.getElementById(l.id);
       if (el) obs.observe(el);
     });
 
     return () => obs.disconnect();
-  }, []);
+  }, [links]);
 
   return (
     <nav className={`nav${solid ? " is-solid" : ""}`}>
@@ -49,7 +60,7 @@ export default function Nav() {
         </a>
 
         <div className="nav-links">
-          {LINKS.map((l) => (
+          {links.map((l) => (
             <a
               key={l.id}
               href={`#${l.id}`}
@@ -60,6 +71,36 @@ export default function Nav() {
           ))}
         </div>
 
+        {index && (
+          <div
+            className={`nav-grids${switching ? " is-busy" : ""}`}
+            role="radiogroup"
+            aria-label="Microgrid shown on this page"
+          >
+            <span className="nav-grids-label mono">Grid</span>
+            <button
+              role="radio"
+              aria-checked={source === "base"}
+              className={`nav-grid${source === "base" ? " is-on" : ""}`}
+              onClick={() => onSource("base")}
+              title="Original single-home study (Pecan Street day, SB3 agents)"
+            >
+              Home
+            </button>
+            {index.grids.map((g) => (
+              <button
+                key={g.id}
+                role="radio"
+                aria-checked={source === g.id}
+                className={`nav-grid${source === g.id ? " is-on" : ""}`}
+                onClick={() => onSource(g.id)}
+                title={`${g.id} · ${g.name}`}
+              >
+                {g.id}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </nav>
   );
