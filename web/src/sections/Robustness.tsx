@@ -11,16 +11,17 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { SimulationData } from "../data/types";
-import { agentColor, orderAgents } from "../data/agents";
+import type { RobustnessPoint, SimulationData } from "../data/types";
+import { agentColor, agentDash, orderAgents } from "../data/agents";
 import { AXIS, GRID, Legend, Tip } from "../components/ChartKit";
 import "./Robustness.css";
 
 const NOISE_STEPS = [0, 5, 10, 20, 30];
 
+type Rob = NonNullable<SimulationData["robustness"]>;
+
 export default function Robustness({ data }: { data: SimulationData }) {
   const rob = data.robustness;
-  const [noise, setNoise] = useState(0);
 
   if (!rob) {
     return (
@@ -39,17 +40,43 @@ export default function Robustness({ data }: { data: SimulationData }) {
       </section>
     );
   }
+  return <RobustnessView data={data} rob={rob} />;
+}
 
-  const agents = orderAgents(Object.keys(rob.curves));
+function RobustnessView({ data, rob }: { data: SimulationData; rob: Rob }) {
+  const [noise, setNoise] = useState(0);
+
+  // Multi-grid exports carry the paper's metric (% of the 0%-error LP's
+  // savings captured); the original study plots $ profit.
+  const g = data.meta.grid;
+  const useCap = !!(g && rob.capture);
+  const curves: Record<string, RobustnessPoint[]> = useCap
+    ? Object.fromEntries(
+        Object.entries(rob.capture!).map(([a, pts]) => [
+          a,
+          pts.map((p) => ({
+            noise: p.noise,
+            meanProfit: p.capture,
+            stdProfit: p.std ?? 0,
+            minProfit: p.capture,
+            maxProfit: p.capture,
+          })),
+        ])
+      )
+    : rob.curves;
+  const fmtV = (v: number) =>
+    useCap ? `${v < 0 ? "−" : ""}${Math.abs(v).toFixed(0)}%` : money(v);
+
+  const agents = orderAgents(Object.keys(curves));
 
   // Recharts has no native band mark: an Area whose dataKey is a [lo, hi]
   // tuple renders the ±1σ ribbon directly, with no stacking tricks.
   const curveRows = useMemo(() => {
-    const noises = rob.curves[agents[0]].map((p) => p.noise);
+    const noises = curves[agents[0]].map((p) => p.noise);
     return noises.map((n, i) => {
       const row: Record<string, number | [number, number]> = { noise: n };
       agents.forEach((a) => {
-        const pt = rob.curves[a][i];
+        const pt = curves[a][i];
         if (pt) {
           row[a] = pt.meanProfit;
           row[`${a}__band`] = [
@@ -60,27 +87,28 @@ export default function Robustness({ data }: { data: SimulationData }) {
       });
       return row;
     });
-  }, [rob, agents]);
+  }, [curves, agents]);
 
   // snapshot at the selected noise level
   const snapshot = useMemo(() => {
     return agents
       .map((a) => {
-        const pts = rob.curves[a];
+        const pts = curves[a];
         const pt =
           pts.find((p) => Math.abs(p.noise - noise) < 0.01) ??
           pts.reduce((best, p) =>
             Math.abs(p.noise - noise) < Math.abs(best.noise - noise) ? p : best
           );
         const base = pts.find((p) => p.noise === 0) ?? pt;
-        const delta =
-          Math.abs(base.meanProfit) > 1e-6
-            ? ((pt.meanProfit - base.meanProfit) / Math.abs(base.meanProfit)) * 100
-            : 0;
+        const delta = useCap
+          ? pt.meanProfit - base.meanProfit
+          : Math.abs(base.meanProfit) > 1e-6
+          ? ((pt.meanProfit - base.meanProfit) / Math.abs(base.meanProfit)) * 100
+          : 0;
         return { agent: a, ...pt, baseProfit: base.meanProfit, delta };
       })
       .sort((a, b) => b.meanProfit - a.meanProfit);
-  }, [rob, agents, noise]);
+  }, [curves, agents, noise, useCap]);
 
   const leader = snapshot[0];
   const lpRank = snapshot.findIndex((s) => s.agent === "LP");
@@ -104,12 +132,23 @@ export default function Robustness({ data }: { data: SimulationData }) {
         <div className="sec-head">
           <span className="sec-index">03 / ROBUSTNESS</span>
           <h2 className="sec-title">Breaking the forecast</h2>
-          <p className="sec-sub">
-            Perfect foresight is a fiction. Here both sides get corrupted
-            forecasts — correlated AR(1) error, the kind real weather models
-            make — and the LP has to live with a plan it committed to before
-            the day started. Drag the dial.
-          </p>
+          {g ? (
+            <p className="sec-sub">
+              Perfect foresight is a fiction. Here every controller gets
+              corrupted forecasts of load and solar, with correlated AR(1)
+              error (ρ = 0.9) like real weather models make. The LP commits to
+              a plan before the day starts, MPC re-plans every hour, and the RL
+              agents re-decide every hour. Scores are the share of the
+              clean-forecast LP's savings each method keeps. Drag the dial.
+            </p>
+          ) : (
+            <p className="sec-sub">
+              Perfect foresight is a fiction. Here both sides get corrupted
+              forecasts — correlated AR(1) error, the kind real weather models
+              make — and the LP has to live with a plan it committed to before
+              the day started. Drag the dial.
+            </p>
+          )}
         </div>
 
         {/* ---- noise dial ---- */}
@@ -153,10 +192,30 @@ export default function Robustness({ data }: { data: SimulationData }) {
           <span className="rb-verdict-dot" />
           <p className="rb-verdict-text">
             {noise === 0 ? (
+              g ? (
+                <>
+                  With a clean forecast the LP and MPC are unbeatable — they
+                  solve the whole day exactly. The learned agents pay a
+                  learning penalty.
+                </>
+              ) : (
+                <>
+                  With a clean forecast the LP is unbeatable — it knows the whole
+                  day and solves it exactly. Everything else pays a learning
+                  penalty.
+                </>
+              )
+            ) : g && leader.agent !== "LP" ? (
               <>
-                With a clean forecast the LP is unbeatable — it knows the whole
-                day and solves it exactly. Everything else pays a learning
-                penalty.
+                At <strong>{noise}% error</strong>,{" "}
+                <strong style={{ color: agentColor(leader.agent) }}>
+                  {leader.agent}
+                </strong>{" "}
+                leads with {fmtV(leader.meanProfit)} of the optimal savings, and
+                the open-loop LP is at rank <strong>#{lpRank + 1}</strong>
+                {leader.agent === "MPC"
+                  ? ". Re-planning every hour on the latest forecast is enough here."
+                  : ". The learned policy has absorbed how this grid punishes mistakes, which a plan built on a wrong forecast cannot do."}
               </>
             ) : lpRank > 0 ? (
               <>
@@ -182,8 +241,12 @@ export default function Robustness({ data }: { data: SimulationData }) {
           {/* ---- degradation curves ---- */}
           <div className="panel rb-wide">
             <div className="panel-head">
-              <span className="panel-title">Profit as the forecast degrades</span>
-              <span className="panel-note">bands show ±1σ over 10 scenarios</span>
+              <span className="panel-title">
+                {useCap ? "Savings kept as the forecast degrades" : "Profit as the forecast degrades"}
+              </span>
+              <span className="panel-note">
+                bands show ±1σ over {g ? `${g.robustnessRuns} runs` : "10 scenarios"}
+              </span>
             </div>
             <div className="panel-body">
               <div className="rb-chart">
@@ -202,7 +265,7 @@ export default function Robustness({ data }: { data: SimulationData }) {
                       domain={[0, 30]}
                       ticks={NOISE_STEPS}
                     />
-                    <YAxis {...AXIS} tickLine={false} width={46} />
+                    <YAxis {...AXIS} tickLine={false} width={46} unit={useCap ? "%" : undefined} />
                     <Tooltip
                       content={({ active, payload, label }) =>
                         active && payload?.length ? (
@@ -217,13 +280,17 @@ export default function Robustness({ data }: { data: SimulationData }) {
                               .sort((x, y) => y.v - x.v)
                               .map((r) => ({
                                 label: r.a,
-                                value: `${r.v < 0 ? "−" : ""}$${Math.abs(r.v).toFixed(3)}`,
+                                value: useCap ? fmtV(r.v) : `${r.v < 0 ? "−" : ""}$${Math.abs(r.v).toFixed(3)}`,
                                 color: agentColor(r.a),
                               }))}
                           />
                         ) : null
                       }
                     />
+                    {useCap && <ReferenceLine y={0} stroke="#2f4055" />}
+                    {useCap && (
+                      <ReferenceLine y={100} stroke="#2f4055" strokeDasharray="2 4" />
+                    )}
                     <ReferenceLine
                       x={noise}
                       stroke="#e4ebf2"
@@ -248,7 +315,7 @@ export default function Robustness({ data }: { data: SimulationData }) {
                         dataKey={a}
                         stroke={agentColor(a)}
                         strokeWidth={a === "LP" ? 2.4 : 2}
-                        strokeDasharray={a === "LP" ? "6 3" : undefined}
+                        strokeDasharray={agentDash(a)}
                         dot={{ r: 2.8, strokeWidth: 0, fill: agentColor(a) }}
                         activeDot={{ r: 4.5, stroke: "#0b0f14", strokeWidth: 2 }}
                         isAnimationActive={false}
@@ -259,9 +326,9 @@ export default function Robustness({ data }: { data: SimulationData }) {
               </div>
               <Legend
                 items={agents.map((a) => ({
-                  label: a,
                   color: agentColor(a),
-                  dashed: a === "LP",
+                  label: a === "LP" && g ? "LP (open loop)" : a,
+                  dashed: !!agentDash(a),
                 }))}
               />
             </div>
@@ -271,7 +338,9 @@ export default function Robustness({ data }: { data: SimulationData }) {
           <div className="panel">
             <div className="panel-head">
               <span className="panel-title">Standing at {noise}% error</span>
-              <span className="panel-note">vs own clean-forecast baseline</span>
+              <span className="panel-note">
+                {useCap ? "change in points vs 0% error" : "vs own clean-forecast baseline"}
+              </span>
             </div>
             <div className="rb-rank">
               {snapshot.map((s, i) => {
@@ -288,7 +357,7 @@ export default function Robustness({ data }: { data: SimulationData }) {
                     <span className="rb-rank-pos mono">#{i + 1}</span>
                     <span className="rb-rank-name">
                       <i style={{ background: agentColor(s.agent) }} />
-                      {s.agent}
+                      {s.agent === "LP" && g ? "LP (open loop)" : s.agent}
                     </span>
                     <div className="rb-rank-bar">
                       <div
@@ -299,10 +368,7 @@ export default function Robustness({ data }: { data: SimulationData }) {
                         }}
                       />
                     </div>
-                    <span className="rb-rank-val num">
-                      {s.meanProfit < 0 ? "−" : ""}$
-                      {Math.abs(s.meanProfit).toFixed(2)}
-                    </span>
+                    <span className="rb-rank-val num">{fmtV(s.meanProfit)}</span>
                     <span
                       className={`rb-rank-delta mono ${
                         s.delta < -0.5 ? "neg" : s.delta > 0.5 ? "pos" : "dim"
@@ -310,7 +376,7 @@ export default function Robustness({ data }: { data: SimulationData }) {
                     >
                       {noise === 0
                         ? "base"
-                        : `${s.delta > 0 ? "+" : ""}${s.delta.toFixed(0)}%`}
+                        : `${s.delta > 0 ? "+" : ""}${s.delta.toFixed(0)}${useCap ? "" : "%"}`}
                     </span>
                   </div>
                 );
@@ -416,6 +482,7 @@ export default function Robustness({ data }: { data: SimulationData }) {
                   <th>Agent</th>
                   <th className="ta-r">Profit @ 0% noise</th>
                   <th className="ta-r">Profit @ 30% noise</th>
+                  {useCap && <th className="ta-r">Savings kept @ 30%</th>}
                   <th className="ta-r">Degradation</th>
                   <th className="ta-r">Robustness score</th>
                 </tr>
@@ -431,7 +498,7 @@ export default function Robustness({ data }: { data: SimulationData }) {
                       <td>
                         <span className="cmp-table-agent">
                           <i style={{ background: agentColor(a) }} />
-                          {a}
+                          {a === "LP" && g ? "LP (open loop)" : a}
                         </span>
                       </td>
                       <td className="ta-r num">
@@ -440,6 +507,9 @@ export default function Robustness({ data }: { data: SimulationData }) {
                       <td className="ta-r num">
                         {money(Number(r["Profit @ 30% Noise"]))}
                       </td>
+                      {useCap && (
+                        <td className="ta-r num">{fmtV(Number(r["Capture @ 30% (%)"]))}</td>
+                      )}
                       <td className="ta-r num">
                         <span className={deg > 5 ? "neg" : deg < 0 ? "pos" : undefined}>
                           {deg > 0 ? "−" : "+"}
@@ -461,4 +531,5 @@ export default function Robustness({ data }: { data: SimulationData }) {
   );
 }
 
-const money = (v: number) => `${v < 0 ? "−" : ""}$${Math.abs(v).toFixed(2)}`;
+const money = (v: number) =>
+  `${v < 0 ? "−" : ""}$${Math.abs(v).toFixed(Math.abs(v) >= 100 ? 0 : 2)}`;

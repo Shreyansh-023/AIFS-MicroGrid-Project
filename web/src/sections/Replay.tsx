@@ -11,7 +11,7 @@ import {
   YAxis,
 } from "recharts";
 import type { SimulationData } from "../data/types";
-import { agentColor, orderAgents, touAt } from "../data/agents";
+import { agentColor, orderAgents, touAt, useBands } from "../data/agents";
 import { AXIS, GRID, TouBands, TouKey } from "../components/ChartKit";
 import "./Replay.css";
 
@@ -24,9 +24,12 @@ const SPEEDS = [
 
 export default function Replay({ data }: { data: SimulationData }) {
   const available = orderAgents(Object.keys(data.trajectories));
+  const g = data.meta.grid;
+  const preferred = g ? "SAC" : "R-SAC";
   const [agent, setAgent] = useState(
-    available.includes("R-SAC") ? "R-SAC" : available[0]
+    available.includes(preferred) ? preferred : available[0]
   );
+  const bands = useBands();
   const [hour, setHour] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [speedIdx, setSpeedIdx] = useState(1);
@@ -72,10 +75,24 @@ export default function Replay({ data }: { data: SimulationData }) {
   );
 
   const now = rows[hour];
-  const band = touAt(hour);
+  const band = touAt(hour, bands);
   const bat = now.bat;
+  const idleKw = Math.max(0.05, cfg.maxPowerKw * 0.01);
   const mode =
-    Math.abs(bat) < 0.05 ? "idle" : bat > 0 ? "charging" : "discharging";
+    Math.abs(bat) < idleKw ? "idle" : bat > 0 ? "charging" : "discharging";
+
+  // Grid meter scale: the soft peak cap or hard import cap when the grid has
+  // one, otherwise the largest grid flow any agent produces on this day.
+  const gridLimit = cfg.peakThresholdKw ?? g?.importCapKw ?? null;
+  const gridMax = useMemo(
+    () =>
+      gridLimit ??
+      Math.max(
+        1,
+        ...Object.values(data.trajectories).flatMap((t) => t.gridPower.map(Math.abs))
+      ) * 1.05,
+    [gridLimit, data.trajectories]
+  );
 
   const replay = () => {
     setHour(0);
@@ -93,14 +110,23 @@ export default function Replay({ data }: { data: SimulationData }) {
         <div className="sec-head">
           <span className="sec-index">01 / REPLAY</span>
           <h2 className="sec-title">One day, hour by hour</h2>
-          <p className="sec-sub">
-            Press play and watch the policy work. The battery buys cheap energy
-            overnight, soaks up the midday solar surplus, then sells it back
-            into the on-peak window when grid power costs{" "}
-            <span className="mono">${Math.max(...price).toFixed(2)}</span>/kWh.
-            Switch agents to see how differently each one reasons about the
-            same day.
-          </p>
+          {g ? (
+            <p className="sec-sub">
+              Press play and watch the policy work on{" "}
+              <span className="mono">{g.replayDate}</span>, a held-out test day
+              that none of the agents trained on. {g.strategy} Switch agents to
+              see how differently each one handles the same day.
+            </p>
+          ) : (
+            <p className="sec-sub">
+              Press play and watch the policy work. The battery buys cheap energy
+              overnight, soaks up the midday solar surplus, then sells it back
+              into the on-peak window when grid power costs{" "}
+              <span className="mono">${Math.max(...price).toFixed(2)}</span>/kWh.
+              Switch agents to see how differently each one reasons about the
+              same day.
+            </p>
+          )}
         </div>
 
         {/* ---- controls ---- */}
@@ -203,7 +229,7 @@ export default function Replay({ data }: { data: SimulationData }) {
                 className="rp-clock-band"
                 style={{ color: band.color, borderColor: band.color }}
               >
-                {band.label} · ${band.price.toFixed(2)}
+                {band.label} · ${now.price.toFixed(2)}
               </span>
             </div>
 
@@ -236,10 +262,10 @@ export default function Replay({ data }: { data: SimulationData }) {
               <Meter
                 label={now.grid >= 0 ? "Grid import" : "Grid export"}
                 value={Math.abs(now.grid)}
-                max={cfg.peakThresholdKw}
+                max={gridMax}
                 color={now.grid >= 0 ? "var(--grid-import)" : "var(--grid-export)"}
                 unit="kW"
-                danger={Math.abs(now.grid) > cfg.peakThresholdKw}
+                danger={gridLimit !== null && now.grid > gridLimit - 1e-3}
               />
             </div>
 
@@ -318,6 +344,7 @@ export default function Replay({ data }: { data: SimulationData }) {
                 <XAxis dataKey="h" {...AXIS} tickLine={false} interval={5} />
                 <YAxis
                   domain={[-cfg.maxPowerKw, cfg.maxPowerKw]}
+                  ticks={[-cfg.maxPowerKw, -cfg.maxPowerKw / 2, 0, cfg.maxPowerKw / 2, cfg.maxPowerKw]}
                   {...AXIS}
                   tickLine={false}
                   width={42}

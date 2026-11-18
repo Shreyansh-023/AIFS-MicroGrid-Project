@@ -49,3 +49,9 @@ results/*.pkl
 *.blg
 *.run.xml
 *.bcf
+
+# Multi-grid data cache and run outputs
+data/raw/
+data/processed/*.npz
+results/multigrid*/checkpoints/
+results/multigrid_quick/

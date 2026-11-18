@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { ReferenceArea } from "recharts";
-import { TOU_BANDS } from "../data/agents";
+import { isPeakBand, useBands } from "../data/agents";
+import type { Band } from "../data/types";
 import "./ChartKit.css";
 
 export const AXIS = {
@@ -20,17 +21,23 @@ export const GRID = {
  * plot into an undifferentiated wash and hides the series.
  */
 export function TouBands({ opacity = 0.09 }: { opacity?: number }) {
-  const peak = TOU_BANDS.find((b) => b.label === "On-peak")!;
-  return (
+  // One area per peak band: a TOU day has one, an RTP day can have several,
+  // and a flat tariff has none.
+  return <>{TouBandAreas(useBands(), opacity)}</>;
+}
+
+export function TouBandAreas(bands: Band[], opacity = 0.09) {
+  return bands.filter(isPeakBand).map((b) => (
     <ReferenceArea
-      x1={peak.from}
-      x2={peak.to}
-      fill={peak.color}
+      key={`${b.from}-${b.to}`}
+      x1={b.from}
+      x2={Math.min(b.to, 23)}
+      fill={b.color}
       fillOpacity={opacity}
       stroke="none"
       ifOverflow="hidden"
     />
-  );
+  ));
 }
 
 interface TipRow {
@@ -95,8 +102,9 @@ export function Legend({
 }
 
 export function TouKey() {
+  const all = useBands();
   const seen = new Set<string>();
-  const bands = TOU_BANDS.filter((b) => {
+  const bands = all.filter((b) => {
     if (seen.has(b.label)) return false;
     seen.add(b.label);
     return true;
@@ -105,7 +113,7 @@ export function TouKey() {
   return (
     <div className="tou-key">
       {bands.map((b) => {
-        const shaded = b.label === "On-peak";
+        const shaded = isPeakBand(b);
         return (
           <span className="tou-key-item" key={b.label}>
             <i

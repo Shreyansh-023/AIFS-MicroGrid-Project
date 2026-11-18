@@ -1,0 +1,250 @@
+/* ---------- grid cards ---------- */
+
+.fl-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.fl-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px;
+  text-align: left;
+  color: var(--text);
+  font: inherit;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+  cursor: pointer;
+  transition: border-color 0.18s var(--ease), background 0.18s var(--ease);
+}
+
+.fl-card:hover {
+  border-color: var(--hairline-strong);
+  background: var(--surface-2);
+}
+
+.fl-card.is-on {
+  border-color: var(--rsac);
+  box-shadow: 0 0 0 1px var(--rsac) inset;
+}
+
+.fl-card:focus-visible {
+  outline: 2px solid var(--sac);
+  outline-offset: 2px;
+}
+
+.fl-card--base {
+  background: transparent;
+  border-style: dashed;
+}
+
+.fl-card-top {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.fl-card-id {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--rsac);
+}
+
+.fl-card-name {
+  font-size: 14.5px;
+  font-weight: 600;
+}
+
+.fl-card-desc {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-2);
+}
+
+.fl-card-specs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 10.5px;
+  color: var(--text-3);
+}
+
+.fl-card-score {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--hairline);
+}
+
+.fl-card-score-val {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.fl-card-score-label {
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+
+/* ---------- heatmap ---------- */
+
+.fl-head {
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.fl-tabs {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+}
+
+.fl-tab {
+  padding: 5px 10px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-3);
+  font: 500 12px var(--font-sans);
+  cursor: pointer;
+}
+
+.fl-tab:hover {
+  color: var(--text);
+}
+
+.fl-tab.is-on {
+  color: var(--text);
+  background: var(--surface-3);
+}
+
+.fl-scroll {
+  overflow-x: auto;
+}
+
+.fl-table {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: separate;
+  border-spacing: 2px;
+  padding: 10px 14px;
+}
+
+.fl-table th,
+.fl-table td {
+  padding: 0;
+  font-weight: 500;
+}
+
+.fl-table thead th {
+  vertical-align: bottom;
+  border-bottom: 2px solid transparent;
+}
+
+.fl-table thead th.is-on {
+  border-bottom-color: var(--rsac);
+}
+
+.fl-colbtn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+  padding: 6px 4px 8px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.fl-colbtn .mono {
+  font-size: 12px;
+}
+
+.fl-colbtn small {
+  font-size: 10.5px;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+
+.fl-colbtn:hover small {
+  color: var(--text-2);
+}
+
+.fl-rowhead {
+  text-align: left;
+  white-space: nowrap;
+  padding-right: 14px !important;
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+
+.fl-method {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fl-method i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.fl-table td {
+  height: 34px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text);
+  border-radius: var(--r-sm);
+}
+
+.fl-table td.is-on {
+  box-shadow: 0 0 0 1px rgba(53, 214, 164, 0.55) inset;
+}
+
+.fl-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 22px;
+  padding: 12px 20px 16px;
+  border-top: 1px solid var(--hairline);
+}
+
+.fl-scale {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  color: var(--text-3);
+}
+
+.fl-scale i {
+  width: 56px;
+  height: 8px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, rgba(232, 87, 107, 0.58), rgba(232, 87, 107, 0.08));
+}
+
+.fl-scale i.fl-scale-pos {
+  background: linear-gradient(90deg, rgba(46, 125, 209, 0.08), rgba(46, 125, 209, 0.58));
+}
+
+.fl-note {
+  flex: 1 1 320px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text-3);
+}

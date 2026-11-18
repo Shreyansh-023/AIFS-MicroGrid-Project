@@ -15,7 +15,15 @@ import {
   YAxis,
 } from "recharts";
 import type { SimulationData } from "../data/types";
-import { AGENT_BLURB, AGENT_KIND, agentColor, orderAgents } from "../data/agents";
+import {
+  AGENT_BLURB,
+  AGENT_KIND,
+  HIDDEN_BY_DEFAULT,
+  agentColor,
+  agentDash,
+  orderAgents,
+} from "../data/agents";
+import { moneyDp } from "../data/useSimulation";
 import { AXIS, GRID, Tip, TouBands } from "../components/ChartKit";
 import "./Comparison.css";
 
@@ -25,7 +33,10 @@ export default function Comparison({ data }: { data: SimulationData }) {
   );
 
   const [shown, setShown] = useState<Set<string>>(
-    () => new Set(agents.filter((a) => a !== "NoOp"))
+    () =>
+      new Set(
+        agents.filter((a) => (data.meta.grid ? !HIDDEN_BY_DEFAULT.has(a) : a !== "NoOp"))
+      )
   );
 
   const toggle = (a: string) =>
@@ -66,7 +77,9 @@ export default function Comparison({ data }: { data: SimulationData }) {
 
   const barRows = useMemo(
     () =>
-      orderAgents(data.summary.map((r) => String(r.Agent))).map((a) => {
+      orderAgents(data.summary.map((r) => String(r.Agent)))
+        .filter((a) => !data.meta.grid || shown.has(a))
+        .map((a) => {
         const row = data.summary.find((r) => String(r.Agent) === a)!;
         return {
           agent: a,
@@ -74,7 +87,7 @@ export default function Comparison({ data }: { data: SimulationData }) {
           err: Number(row["Std Profit ($)"] ?? 0),
         };
       }),
-    [data]
+    [data, shown]
   );
 
   const breakdownRows = useMemo(
@@ -88,6 +101,8 @@ export default function Comparison({ data }: { data: SimulationData }) {
             energy: t.energyProfit ?? 0,
             peak: -(t.peakPenalty ?? 0),
             degradation: -(t.degradationCost ?? 0),
+            unserved: -(t.unservedCost ?? 0),
+            terminal: -(t.terminalCost ?? 0),
           };
         }),
     [data, agents]
@@ -98,12 +113,24 @@ export default function Comparison({ data }: { data: SimulationData }) {
       <div className="shell">
         <div className="sec-head">
           <span className="sec-index">02 / HEAD TO HEAD</span>
-          <h2 className="sec-title">Same day, five strategies</h2>
-          <p className="sec-sub">
-            Every agent sees the identical {data.meta.evalEpisodes}-episode
-            sweep, with starting charge spread from 20% to 80%. Click a name to
-            add or remove it from the charts.
-          </p>
+          <h2 className="sec-title">
+            Same day, {data.meta.grid ? agents.length : "five"} strategies
+          </h2>
+          {data.meta.grid ? (
+            <p className="sec-sub">
+              Every agent is scored on the same {data.meta.evalEpisodes} held-out
+              test days of 2018, starting at 50% charge, with results averaged over
+              two training seeds. The hourly charts replay{" "}
+              <span className="mono">{data.meta.grid.replayDate}</span>. Click a
+              name to add or remove it from the charts.
+            </p>
+          ) : (
+            <p className="sec-sub">
+              Every agent sees the identical {data.meta.evalEpisodes}-episode
+              sweep, with starting charge spread from 20% to 80%. Click a name to
+              add or remove it from the charts.
+            </p>
+          )}
         </div>
 
         <div className="cmp-toggles">
@@ -172,7 +199,7 @@ export default function Comparison({ data }: { data: SimulationData }) {
                         dataKey={a}
                         stroke={agentColor(a)}
                         strokeWidth={a === "LP" ? 1.6 : 2}
-                        strokeDasharray={a === "LP" ? "5 3" : undefined}
+                        strokeDasharray={agentDash(a)}
                         dot={false}
                         isAnimationActive={false}
                       />
@@ -227,7 +254,7 @@ export default function Comparison({ data }: { data: SimulationData }) {
                         dataKey={a}
                         stroke={agentColor(a)}
                         strokeWidth={a === "LP" ? 1.6 : 2}
-                        strokeDasharray={a === "LP" ? "5 3" : undefined}
+                        strokeDasharray={agentDash(a)}
                         dot={false}
                         connectNulls
                         isAnimationActive={false}
@@ -241,9 +268,12 @@ export default function Comparison({ data }: { data: SimulationData }) {
 
           <div className="panel">
             <div className="panel-head">
-              <span className="panel-title">Mean profit across episodes</span>
+              <span className="panel-title">
+                Mean profit across {data.meta.grid ? "test days" : "episodes"}
+              </span>
               <span className="panel-note">
-                n = {data.meta.evalEpisodes} · bars show ±1σ
+                n = {data.meta.evalEpisodes} {data.meta.grid ? "test days" : "episodes"} · bars
+                show ±1σ
               </span>
             </div>
             <div className="panel-body">
@@ -354,20 +384,45 @@ export default function Comparison({ data }: { data: SimulationData }) {
                       />
                       <Bar
                         dataKey="peak"
-                        name="Peak penalty"
+                        name={data.meta.grid ? "Peak / demand charge" : "Peak penalty"}
                         stackId="a"
                         fill="#e8576b"
                         fillOpacity={0.82}
                         maxBarSize={52}
                       />
+                      {breakdownRows.some((r) => r.unserved < 0) && (
+                        <Bar
+                          dataKey="unserved"
+                          name="Unserved energy"
+                          stackId="a"
+                          fill="#c48bff"
+                          fillOpacity={0.82}
+                          maxBarSize={52}
+                        />
+                      )}
+                      {breakdownRows.some((r) => r.terminal < -0.005) && (
+                        <Bar
+                          dataKey="terminal"
+                          name="Terminal SOC"
+                          stackId="a"
+                          fill="#9eb0c2"
+                          fillOpacity={0.82}
+                          maxBarSize={52}
+                        />
+                      )}
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
                 <p className="cmp-read">
                   Degradation is the cost of cycling the pack — an agent that
-                  trades aggressively pays for it here. Peak penalty only bites
-                  when grid draw crosses{" "}
-                  {data.meta.config.peakThresholdKw} kW.
+                  trades aggressively pays for it here.{" "}
+                  {data.meta.config.peakThresholdKw !== null
+                    ? `Peak penalty only bites when grid draw crosses ${data.meta.config.peakThresholdKw} kW.`
+                    : data.meta.grid?.demandChargePerKwDay
+                    ? `The demand charge bills $${data.meta.grid.demandChargePerKwDay.toFixed(2)} for every kW of the day's peak import.`
+                    : data.meta.grid?.importCapKw != null
+                    ? `Load above the ${data.meta.grid.importCapKw} kW import cap is shed and billed at $${data.meta.grid.voll}/kWh.`
+                    : "This tariff has no peak or demand charge."}
                 </p>
               </div>
             </div>
@@ -387,13 +442,17 @@ function ScoreTable({ data }: { data: SimulationData }) {
 
   const num = (r: Record<string, string | number>, k: string) =>
     r[k] === undefined || r[k] === null ? null : Number(r[k]);
+  const hasCapture = rows.some((r) => r["Capture (%)"] !== undefined);
+  const hasTime = rows.some((r) => r["Eval Time (s)"] !== undefined);
+  const blurbs = { ...AGENT_BLURB, ...(data.meta.blurbs ?? {}) };
 
   return (
     <div className="panel cmp-table-panel">
       <div className="panel-head">
         <span className="panel-title">Full scoreboard</span>
         <span className="panel-note">
-          averaged over {data.meta.evalEpisodes} episodes
+          averaged over {data.meta.evalEpisodes}{" "}
+          {data.meta.grid ? "test days · 2 seeds" : "episodes"}
         </span>
       </div>
       <div className="cmp-table-scroll">
@@ -404,10 +463,11 @@ function ScoreTable({ data }: { data: SimulationData }) {
               <th>Kind</th>
               <th className="ta-r">Mean profit</th>
               <th className="ta-r">σ</th>
+              {hasCapture && <th className="ta-r">LP savings captured</th>}
               <th className="ta-r">Gap vs LP</th>
               <th className="ta-r">Throughput</th>
               <th className="ta-r">Final SOC</th>
-              <th className="ta-r">Eval time</th>
+              {hasTime && <th className="ta-r">Eval time</th>}
             </tr>
           </thead>
           <tbody>
@@ -429,6 +489,19 @@ function ScoreTable({ data }: { data: SimulationData }) {
                   <td className="ta-r num dim">
                     {fmtPlain(num(r, "Std Profit ($)"))}
                   </td>
+                  {hasCapture && (
+                    <td className="ta-r num">
+                      {(() => {
+                        const v = num(r, "Capture (%)");
+                        if (v === null || Number.isNaN(v)) return "—";
+                        return (
+                          <span className={v < 0 ? "neg" : v >= 75 ? "pos" : undefined}>
+                            {v.toFixed(0)}%
+                          </span>
+                        );
+                      })()}
+                    </td>
+                  )}
                   <td className="ta-r num">
                     {a === "LP" ? (
                       <span className="dim">benchmark</span>
@@ -449,12 +522,14 @@ function ScoreTable({ data }: { data: SimulationData }) {
                       return v === null ? "—" : `${(v * 100).toFixed(0)}%`;
                     })()}
                   </td>
-                  <td className="ta-r num dim">
-                    {(() => {
-                      const v = num(r, "Eval Time (s)");
-                      return v === null ? "—" : `${v.toFixed(2)}s`;
-                    })()}
-                  </td>
+                  {hasTime && (
+                    <td className="ta-r num dim">
+                      {(() => {
+                        const v = num(r, "Eval Time (s)");
+                        return v === null ? "—" : `${v.toFixed(2)}s`;
+                      })()}
+                    </td>
+                  )}
                 </tr>
               );
             })}
@@ -462,7 +537,7 @@ function ScoreTable({ data }: { data: SimulationData }) {
         </table>
       </div>
       <div className="cmp-table-foot">
-        {orderAgents(Object.keys(AGENT_BLURB))
+        {orderAgents(Object.keys(blurbs))
           .filter((a) => data.summary.some((r) => String(r.Agent) === a))
           .map((a) => (
             <div className="cmp-note" key={a}>
@@ -470,7 +545,7 @@ function ScoreTable({ data }: { data: SimulationData }) {
                 <i style={{ background: agentColor(a) }} />
                 {a}
               </span>
-              <span className="cmp-note-body">{AGENT_BLURB[a]}</span>
+              <span className="cmp-note-body">{blurbs[a]}</span>
             </div>
           ))}
       </div>
@@ -479,6 +554,6 @@ function ScoreTable({ data }: { data: SimulationData }) {
 }
 
 const fmtMoney = (v: number | null) =>
-  v === null ? "—" : `${v < 0 ? "−" : ""}$${Math.abs(v).toFixed(3)}`;
+  v === null ? "—" : `${v < 0 ? "−" : ""}$${Math.abs(v).toFixed(Math.min(3, moneyDp(v) + 1))}`;
 
 const fmtPlain = (v: number | null) => (v === null ? "—" : v.toFixed(2));

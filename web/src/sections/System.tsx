@@ -9,13 +9,48 @@ import {
   YAxis,
 } from "recharts";
 import type { SimulationData } from "../data/types";
-import { touAt } from "../data/agents";
+import { touAt, useBands } from "../data/agents";
 import { AXIS, GRID, Legend, Tip, TouBands, TouKey } from "../components/ChartKit";
 import "./System.css";
 
 export default function System({ data }: { data: SimulationData }) {
   const cfg = data.meta.config;
   const { hours, solar, load, netLoad, price } = data.profiles;
+  const bands = useBands();
+  const g = data.meta.grid;
+  const obsDim = g?.obsDim ?? 131;
+  const priceMax = Math.max(0.34, Math.max(...price) * 1.15);
+  const loadLabel = g?.loadLabel ?? "Household load";
+
+  // the grid-specific cost term (peak cap, demand charge or import cap)
+  const limitTerm =
+    cfg.peakThresholdKw !== null
+      ? {
+          name: "Peak penalty",
+          formula: `$${cfg.peakPenaltyRate.toFixed(2)} × max(0, P_grid − ${cfg.peakThresholdKw})`,
+          note: "demand charge above the cap",
+        }
+      : g?.demandChargePerKwDay
+      ? {
+          name: "Demand charge",
+          formula: `$${g.demandChargePerKwDay.toFixed(2)} × max_t P_import`,
+          note: "billed on the day's peak import, in kW",
+        }
+      : g?.importCapKw != null
+      ? {
+          name: "Unserved energy",
+          formula: `$${g.voll.toFixed(2)} × max(0, P_net − ${g.importCapKw})`,
+          note: "load above the import cap is shed",
+        }
+      : { name: "Peak penalty", formula: "none on this tariff", note: "no demand or peak charge" };
+
+  const exportNote = !g
+    ? "exports earn 40% of retail"
+    : g.exportCapKw === 0
+    ? "export is not allowed"
+    : `exports earn ${(g.exportRatio * 100).toFixed(0)}% of retail${
+        g.exportCapKw != null ? `, capped at ${g.exportCapKw} kW` : ""
+      }`;
 
   const rows = hours.map((h) => ({
     h,
@@ -23,7 +58,7 @@ export default function System({ data }: { data: SimulationData }) {
     load: load[h],
     net: netLoad[h],
     price: price[h],
-    band: touAt(h).color,
+    band: touAt(h, bands).color,
   }));
 
   return (
@@ -33,9 +68,11 @@ export default function System({ data }: { data: SimulationData }) {
           <span className="sec-index">04 / THE SYSTEM</span>
           <h2 className="sec-title">What the agent actually sees</h2>
           <p className="sec-sub">
-            A 131-dimensional observation, one scalar action, and a cost
-            function with three competing terms. The whole problem is that
-            solar peaks at noon while electricity is most expensive at six.
+            A {obsDim}-dimensional observation, one scalar action, and a cost
+            function with competing terms.{" "}
+            {g
+              ? `${g.id} runs on ${g.tariff.toLowerCase()} with a ${g.pvKwp} kWp array. The chart shows the replayed day, ${g.replayDate}.`
+              : "The whole problem is that solar peaks at noon while electricity is most expensive at six."}
           </p>
         </div>
 
@@ -70,7 +107,7 @@ export default function System({ data }: { data: SimulationData }) {
                       {...AXIS}
                       tickLine={false}
                       width={44}
-                      unit=" kW"
+                      tickFormatter={(v: number) => (v >= 10 ? v.toFixed(0) : v.toFixed(1))}
                     />
                     <YAxis
                       yAxisId="pr"
@@ -78,7 +115,7 @@ export default function System({ data }: { data: SimulationData }) {
                       {...AXIS}
                       tickLine={false}
                       width={48}
-                      domain={[0, 0.34]}
+                      domain={[0, Number(priceMax.toFixed(2))]}
                       tickFormatter={(v: number) => `$${v.toFixed(2)}`}
                     />
                     <Tooltip
@@ -108,7 +145,7 @@ export default function System({ data }: { data: SimulationData }) {
                                 dim: true,
                               },
                             ]}
-                            footer={touAt(Number(label)).label}
+                            footer={touAt(Number(label), bands).label}
                           />
                         ) : null
                       }
@@ -147,8 +184,8 @@ export default function System({ data }: { data: SimulationData }) {
                 <Legend
                   items={[
                     { label: "Solar generation", color: "#f5c242" },
-                    { label: "Household load", color: "#ff7a66" },
-                    { label: "TOU price", color: "#9eb0c2", dashed: true },
+                    { label: loadLabel, color: "#ff7a66" },
+                    { label: g ? "Import price" : "TOU price", color: "#9eb0c2", dashed: true },
                   ]}
                 />
                 <TouKey />
@@ -160,13 +197,13 @@ export default function System({ data }: { data: SimulationData }) {
           <div className="panel">
             <div className="panel-head">
               <span className="panel-title">Observation vector</span>
-              <span className="panel-note">131 dims, clipped to [−1, 1]</span>
+              <span className="panel-note">{obsDim} dims, normalised</span>
             </div>
             <div className="panel-body">
               <div className="obs-stack">
                 <ObsBlock
                   n={7}
-                  total={131}
+                  total={obsDim}
                   label="Current state"
                   color="#4da3ff"
                   items={[
@@ -180,14 +217,14 @@ export default function System({ data }: { data: SimulationData }) {
                 />
                 <ObsBlock
                   n={4}
-                  total={131}
+                  total={obsDim}
                   label="Recent history"
                   color="#35d6a4"
                   items={["rolling net-power buffer, 4 steps"]}
                 />
                 <ObsBlock
                   n={120}
-                  total={131}
+                  total={obsDim}
                   label="Forecast window"
                   color="#c48bff"
                   items={[
@@ -195,9 +232,25 @@ export default function System({ data }: { data: SimulationData }) {
                     "net power, price, solar, sin/cos hour",
                   ]}
                 />
+                {g && (
+                  <ObsBlock
+                    n={obsDim - 131}
+                    total={obsDim}
+                    label="Grid descriptor + context"
+                    color="#f0a23c"
+                    items={[
+                      "storage hours, ramp, PV and load vs inverter",
+                      "export value, demand charge, import/export headroom",
+                      "day's peak net load, peak price, running peak import",
+                    ]}
+                  />
+                )}
               </div>
               <p className="sys-read">
-                Over 90% of the input is look-ahead. That is the whole bet: if
+                {g
+                  ? "The descriptor is what lets one generalist policy tell the six grids apart. "
+                  : ""}
+                Most of the input is look-ahead. That is the whole bet: if
                 the forecast is good, plan with it; if it is not, the agent has
                 to learn to distrust it.
               </p>
@@ -216,14 +269,14 @@ export default function System({ data }: { data: SimulationData }) {
                   sign="−"
                   name="Energy cost"
                   formula="P_grid × price"
-                  note={`exports earn 40% of retail`}
+                  note={exportNote}
                   color="#4da3ff"
                 />
                 <RwTerm
                   sign="−"
-                  name="Peak penalty"
-                  formula={`$${cfg.peakPenaltyRate.toFixed(2)} × max(0, P_grid − ${cfg.peakThresholdKw})`}
-                  note="demand charge above the cap"
+                  name={limitTerm.name}
+                  formula={limitTerm.formula}
+                  note={limitTerm.note}
                   color="#e8576b"
                 />
                 <RwTerm
@@ -236,7 +289,7 @@ export default function System({ data }: { data: SimulationData }) {
                 <RwTerm
                   sign="−"
                   name="Terminal SOC"
-                  formula="|SOC_T − 0.5| × 50"
+                  formula={`|SOC_T − 0.5| × ${g ? g.terminalPenaltyPerUnitSoc.toFixed(0) : 50}`}
                   note="applied once, at hour 24"
                   color="#9eb0c2"
                 />
@@ -253,7 +306,7 @@ export default function System({ data }: { data: SimulationData }) {
           <div className="panel sys-wide">
             <div className="panel-head">
               <span className="panel-title">Plant configuration</span>
-              <span className="panel-note">Tesla Powerwall class</span>
+              <span className="panel-note">{g ? `${g.id} · ${g.name}` : "Tesla Powerwall class"}</span>
             </div>
             <div className="spec-grid">
               <Spec label="Capacity" value={`${cfg.batteryCapacityKwh}`} unit="kWh" />
@@ -264,7 +317,12 @@ export default function System({ data }: { data: SimulationData }) {
                 unit="%"
               />
               <Spec label="Ramp limit" value={`${cfg.rampRateKwPerH}`} unit="kW/h" />
-              <Spec label="Grid cap" value={`${cfg.peakThresholdKw}`} unit="kW" />
+              <Spec
+                label={cfg.peakThresholdKw !== null ? "Grid cap" : "Import cap"}
+                value={`${cfg.peakThresholdKw ?? g?.importCapKw ?? "none"}`}
+                unit={(cfg.peakThresholdKw ?? g?.importCapKw) != null ? "kW" : ""}
+              />
+              {g && <Spec label="Solar PV" value={`${g.pvKwp}`} unit="kWp" />}
               <Spec
                 label="SOC floor"
                 value={`${(cfg.minSocRatio * 100).toFixed(0)}`}
